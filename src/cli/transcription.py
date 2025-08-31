@@ -1,7 +1,89 @@
 import os
+from functools import wraps
 from typing import Optional, Dict, Any, List
 
 from src.transcription import WhisperTranscriber
+
+
+def with_args_and_error_handling(func):
+    """Decorator to pull most options from an argparse Namespace and handle errors.
+
+    If called with an `args` keyword argument (argparse Namespace), this wrapper:
+    - Fills missing keyword-only params (write_txt, write_srt, model, language,
+      transcript_path, srt_path, and file_id_or_url) using values from `args`.
+    - Catches any generic Exception and returns {"error": str(e)} instead of raising.
+
+    If `args` is not provided, behavior is unchanged except that missing booleans
+    default to False for compatibility.
+    """
+
+    @wraps(func)
+    def wrapper(
+        media_path: str,
+        *,
+        write_txt: Optional[bool] = None,
+        write_srt: Optional[bool] = None,
+        model: Optional[str] = None,
+        language: Optional[str] = None,
+        transcript_path: Optional[str] = None,
+        srt_path: Optional[str] = None,
+        srt_header_comments: Optional[List[str]] = None,
+        file_meta: Optional[Dict[str, Any]] = None,
+        file_id_or_url: Optional[str] = None,
+        downloader: Any = None,
+        transcriber: Optional[WhisperTranscriber] = None,
+        display_name: Optional[str] = None,
+        args: Any = None,
+        **extra,
+    ):
+        use_args = args is not None
+
+        if use_args:
+            # Pull defaults from argparse Namespace when not explicitly provided
+            if write_txt is None:
+                write_txt = getattr(args, "transcribe", None)
+            if write_srt is None:
+                write_srt = getattr(args, "srt", None)
+            if model is None:
+                model = getattr(args, "whisper_model", None)
+            if language is None:
+                language = getattr(args, "language", None)
+            if transcript_path is None:
+                transcript_path = getattr(args, "transcript_output", None)
+            if srt_path is None:
+                srt_path = getattr(args, "srt_output", None)
+            if file_id_or_url is None:
+                file_id_or_url = getattr(args, "file_id", None) or getattr(args, "url", None)
+
+        # Ensure booleans are concrete for downstream logic
+        if write_txt is None:
+            write_txt = False
+        if write_srt is None:
+            write_srt = False
+
+        call_kwargs = dict(
+            write_txt=write_txt,
+            write_srt=write_srt,
+            model=model or "small",
+            language=language,
+            transcript_path=transcript_path,
+            srt_path=srt_path,
+            srt_header_comments=srt_header_comments,
+            file_meta=file_meta,
+            file_id_or_url=file_id_or_url,
+            downloader=downloader,
+            transcriber=transcriber,
+            display_name=display_name,
+        )
+
+        try:
+            return func(media_path, **call_kwargs)
+        except Exception as e:
+            if use_args:
+                return {"error": str(e)}
+            raise
+
+    return wrapper
 
 
 def build_srt_header_comments_from_dict(meta: Dict[str, Any]) -> list:
@@ -34,6 +116,7 @@ def build_srt_header_comments_from_file_id(source: str, *, downloader: Any) -> l
 
 # Note: no generic wrapper; use the typed helpers above directly.
 
+@with_args_and_error_handling
 def transcribe_media_outputs(
     media_path: str,
     *,

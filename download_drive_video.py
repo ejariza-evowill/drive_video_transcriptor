@@ -64,20 +64,23 @@ def main(argv=None):
                 failures += 1
                 continue
 
-            if (args.transcribe or args.srt) and transcriber is not None:
-                try:
-                    transcribe_media_outputs(
-                        out_path,
-                        write_txt=args.transcribe,
-                        write_srt=args.srt,
-                        model=args.whisper_model,
-                        language=args.language,
-                        file_meta=f,
-                        transcriber=transcriber,
-                        display_name=name,
-                    )
-                except Exception as e:
-                    print(f"Transcription/SRT failed for {name}: {e}", file=sys.stderr)
+            if args.transcribe or args.srt:
+                # In folder mode, ignore global --transcript-output/--srt-output and
+                # write next to each video file by default.
+                base, _ = os.path.splitext(out_path)
+                transcript_path = f"{base}.txt"
+                srt_path = f"{base}.srt"
+                outcome = transcribe_media_outputs(
+                    out_path,
+                    file_meta=f,
+                    transcriber=transcriber,
+                    display_name=name,
+                    transcript_path=transcript_path,
+                    srt_path=srt_path,
+                    args=args,
+                )
+                if isinstance(outcome, dict) and outcome.get("error"):
+                    print(f"Transcription/SRT failed for {name}: {outcome['error']}", file=sys.stderr)
                     failures += 1
 
         return 1 if failures else 0
@@ -114,20 +117,14 @@ def main(argv=None):
         transcript_path = args.transcript_output or f"{base}.txt"
         srt_path = args.srt_output or f"{base}.srt"
         # Build SRT header from file metadata
-        try:
-            transcribe_media_outputs(
-                out_path,
-                write_txt=args.transcribe,
-                write_srt=args.srt,
-                model=args.whisper_model,
-                language=args.language,
-                transcript_path=transcript_path,
-                srt_path=srt_path,
-                file_id_or_url=file_id,
-                downloader=downloader,
-            )
-        except Exception as e:
-            print(f"Transcription/SRT failed: {e}", file=sys.stderr)
+        outcome = transcribe_media_outputs(
+            out_path,
+            file_id_or_url=file_id,
+            downloader=downloader,
+            args=args,
+        )
+        if isinstance(outcome, dict) and outcome.get("error"):
+            print(f"Transcription/SRT failed: {outcome['error']}", file=sys.stderr)
             return 2
     return 0
 
