@@ -39,13 +39,27 @@ def main(argv=None):
     src.add_argument("--url", help="Full Google Drive URL of the video")
     src.add_argument("--folder-id", help="Drive folder ID to process all video files inside")
     src.add_argument("--folder-url", help="Full Google Drive folder URL to process all video files inside")
-    p.add_argument("-o", "--output", help="Output file path. Defaults to the Drive file name in CWD. In folder mode, ignored.")
+    p.add_argument(
+        "-o",
+        "--output",
+        help=(
+            "Output file path. If omitted, the Drive filename is saved inside "
+            "--output-dir. In folder mode, this flag is ignored."
+        ),
+    )
     p.add_argument("--client-secrets", default=os.environ.get("GOOGLE_OAUTH_CLIENT_SECRETS", "credentials.json"),
                    help="Path to OAuth Client secrets JSON (default: credentials.json or $GOOGLE_OAUTH_CLIENT_SECRETS)")
     p.add_argument("--token", default=os.environ.get("GOOGLE_OAUTH_TOKEN", "token.json"),
                    help="Path to store OAuth token (default: token.json or $GOOGLE_OAUTH_TOKEN)")
     p.add_argument("--force", action="store_true", help="Overwrite output file(s) if they exist")
-    p.add_argument("--output-dir", default=os.path.join(os.getcwd(), "out"), help="Folder mode: directory to save all downloads (default: 'downloads' inside the current working directory)")
+    p.add_argument(
+        "--output-dir",
+        default=os.path.join(os.getcwd(), "out"),
+        help=(
+            "Directory to save downloads. Used for folder mode and for single-file "
+            "mode when --output is not provided (default: ./out)."
+        ),
+    )
     # Transcription options
     p.add_argument("--transcribe", action="store_true", help="Transcribe the downloaded media with Whisper")
     p.add_argument("--whisper-model", default="small", help="Whisper model name (tiny/base/small/medium/large)")
@@ -131,8 +145,21 @@ def main(argv=None):
         print("Could not parse a valid Drive file ID from input.", file=sys.stderr)
         return 2
 
+    # Determine destination path for single file, honoring --output-dir
     try:
-        out_path = downloader.download(file_id, output=args.output, force=args.force)
+        base_name, _ = downloader.resolve_filename(file_id)
+    except Exception as e:
+        print(f"Failed to resolve filename: {e}", file=sys.stderr)
+        return 2
+
+    if args.output:
+        target_path = args.output
+    else:
+        os.makedirs(args.output_dir, exist_ok=True)
+        target_path = os.path.join(args.output_dir, base_name)
+
+    try:
+        out_path = downloader.download(file_id, output=target_path, force=args.force)
         print(f"Downloaded to: {out_path}")
     except FileExistsError as e:
         print(str(e), file=sys.stderr)
