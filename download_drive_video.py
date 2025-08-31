@@ -108,20 +108,13 @@ def main(argv=None):
 
             if (args.transcribe or args.srt) and transcriber is not None:
                 try:
-                    owner = (f.get("ownerDisplayName") or "").strip()
-                    modified = (f.get("modifiedTime") or "").strip()
-                    header = []
-                    if owner:
-                        header.append(f"Owner: {owner}")
-                    if modified:
-                        header.append(f"Modified: {modified}")
                     transcribe_media_outputs(
                         out_path,
                         write_txt=args.transcribe,
                         write_srt=args.srt,
                         model=args.whisper_model,
                         language=args.language,
-                        srt_header_comments=header or None,
+                        file_meta=f,
                         transcriber=transcriber,
                         display_name=name,
                     )
@@ -150,17 +143,6 @@ def main(argv=None):
         transcript_path = args.transcript_output or f"{base}.txt"
         srt_path = args.srt_output or f"{base}.srt"
         # Build SRT header from file metadata
-        header = []
-        try:
-            meta = downloader.get_video_metadata(file_id)
-            owner = (meta.get("ownerDisplayName") or "").strip()
-            modified = (meta.get("modifiedTime") or "").strip()
-            if owner:
-                header.append(f"Owner: {owner}")
-            if modified:
-                header.append(f"Modified: {modified}")
-        except Exception:
-            pass
         try:
             transcribe_media_outputs(
                 out_path,
@@ -170,7 +152,8 @@ def main(argv=None):
                 language=args.language,
                 transcript_path=transcript_path,
                 srt_path=srt_path,
-                srt_header_comments=header or None,
+                file_id_or_url=file_id,
+                downloader=downloader,
             )
         except Exception as e:
             print(f"Transcription/SRT failed: {e}", file=sys.stderr)
