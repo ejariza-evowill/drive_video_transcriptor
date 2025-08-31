@@ -6,11 +6,13 @@
 - Downloads with your permissions (no service account).
 - Accepts a Drive file ID or full URL.
 - Saves and reuses token in `token.json`.
+ - Optional Whisper transcription after download.
 
 **Prerequisites**
 - Python 3.9+
 - A Google Cloud project with Drive API enabled.
 - An OAuth 2.0 Client ID for Desktop app.
+ - For transcription: `ffmpeg` installed on your system and Python package `openai-whisper` (in requirements). Whisper also requires PyTorch; see notes below.
 
 **Setup**
 - Enable API: In Google Cloud Console, enable "Google Drive API" for your project.
@@ -28,6 +30,10 @@
   - `python download_drive_video.py --url "..." --output /path/to/video.mp4`
 - Overwrite existing file:
   - `python download_drive_video.py --url "..." --output video.mp4 --force`
+ - Transcribe after download (saves .txt next to video):
+   - `python download_drive_video.py --url "..." --transcribe`
+ - Choose Whisper model and transcript path:
+   - `python download_drive_video.py --url "..." --transcribe --whisper-model small --transcript-output out.txt`
 
 On first run it opens a browser window for you to log in and grant read access to Drive. The token is saved to `token.json` for reuse. To store files elsewhere, configure:
 - `GOOGLE_OAUTH_CLIENT_SECRETS` to point to your client secrets JSON
@@ -38,12 +44,15 @@ On first run it opens a browser window for you to log in and grant read access t
 - You must have access to the target file; shared drives are supported.
 - If the file isn’t a video MIME type, a warning is printed but download proceeds.
 - To fetch the original Drive filename automatically, omit `--output`.
+ - Whisper uses `ffmpeg` to read media; ensure `ffmpeg` is installed and on PATH.
+ - Whisper relies on PyTorch. If `pip install -r requirements.txt` does not install a working Torch for your platform/CUDA, follow https://pytorch.org/get-started/ to install the appropriate `torch` build, then reinstall `openai-whisper` if needed.
 
 **Troubleshooting**
 - Invalid credentials: Delete `token.json` and run again to re-authenticate.
 - Permission denied: Ensure your Google account can access the file and the owner hasn’t restricted downloads.
 - App not verified: In development, you may see an "unverified app" screen unless you publish/verify the OAuth consent.
+ - Transcription fails with ffmpeg not found: Install ffmpeg (e.g., macOS: `brew install ffmpeg`, Ubuntu: `sudo apt-get install ffmpeg`).
+ - Transcription fails due to Torch/whisper: Ensure a compatible PyTorch is installed for your Python and hardware.
 
 **Security**
 - Do not commit `credentials.json` or `token.json` to source control.
-

@@ -9,6 +9,7 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from src.video_downloader import DriveVideoDownloader
+from src.transcription import WhisperTranscriber
 
 
 SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
@@ -41,6 +42,11 @@ def main(argv=None):
     p.add_argument("--token", default=os.environ.get("GOOGLE_OAUTH_TOKEN", "token.json"),
                    help="Path to store OAuth token (default: token.json or $GOOGLE_OAUTH_TOKEN)")
     p.add_argument("--force", action="store_true", help="Overwrite output file if it exists")
+    # Transcription options
+    p.add_argument("--transcribe", action="store_true", help="Transcribe the downloaded media with Whisper")
+    p.add_argument("--whisper-model", default="small", help="Whisper model name (tiny/base/small/medium/large)")
+    p.add_argument("--transcript-output", help="Path to write transcript .txt (defaults to video basename + .txt)")
+    p.add_argument("--language", help="Language code for Whisper (optional)")
     args = p.parse_args(argv)
 
     file_id_input = args.file_id or args.url
@@ -63,6 +69,21 @@ def main(argv=None):
     except FileExistsError as e:
         print(str(e), file=sys.stderr)
         return 2
+
+    if args.transcribe:
+        base, _ = os.path.splitext(out_path)
+        transcript_path = args.transcript_output or f"{base}.txt"
+        print(f"Transcribing with Whisper model '{args.whisper_model}'...")
+        try:
+            transcriber = WhisperTranscriber(model=args.whisper_model)
+            result = transcriber.transcribe(out_path, language=args.language)
+            text = (result or {}).get("text", "").strip()
+            with open(transcript_path, "w", encoding="utf-8") as f:
+                f.write(text + "\n")
+            print(f"Transcript saved to {transcript_path}")
+        except Exception as e:
+            print(f"Transcription failed: {e}", file=sys.stderr)
+            return 2
     return 0
 
 
