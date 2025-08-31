@@ -85,8 +85,22 @@ class WhisperTranscriber:
         return "\n".join(lines).rstrip() + "\n"
 
     @classmethod
-    def save_srt(cls, segments: List[Dict[str, Any]], out_path: str) -> None:
-        """Write segments to an .srt file at `out_path`."""
-        srt = cls.segments_to_srt(segments)
+    def save_srt(
+        cls,
+        segments: List[Dict[str, Any]],
+        out_path: str,
+        header_comments: Optional[List[str]] = None,
+    ) -> None:
+        """Write segments to an .srt file at `out_path`.
+
+        Optionally prepend comment lines (prefixed with '# ').
+        """
+        body = cls.segments_to_srt(segments)
+        header = ""
+        if header_comments:
+            commented = [f"# {str(line).strip()}" for line in header_comments if str(line).strip()]
+            if commented:
+                header = "\n".join(commented) + "\n\n"
         with open(out_path, "w", encoding="utf-8") as f:
-            f.write(srt)
+            f.write(header)
+            f.write(body)

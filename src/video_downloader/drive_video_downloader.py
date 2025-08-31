@@ -68,6 +68,31 @@ class DriveVideoDownloader:
         )
         return meta.get("name", file_id), meta.get("mimeType", "")
 
+    def get_video_metadata(self, file_id_or_url: str) -> Dict[str, str]:
+        """Fetch owner and last modified date for a Drive video file."""
+        file_id = self.parse_drive_file_id(file_id_or_url)
+        if not file_id:
+            raise ValueError("Could not parse a valid Drive file ID from input.")
+        meta = (
+            self.service
+            .files()
+            .get(
+                fileId=file_id,
+                fields="id,name,mimeType,owners(displayName),modifiedTime",
+                supportsAllDrives=True,
+            )
+            .execute()
+        )
+        owners = meta.get("owners") or []
+        owner = owners[0].get("displayName") if owners else ""
+        return {
+            "id": meta.get("id", file_id),
+            "name": meta.get("name", file_id),
+            "mimeType": meta.get("mimeType", ""),
+            "ownerDisplayName": owner,
+            "modifiedTime": meta.get("modifiedTime", ""),
+        }
+
     def download_file(self, file_id: str, dest_path: str) -> None:
         request = self.service.files().get_media(fileId=file_id, supportsAllDrives=True)
         fh = io.FileIO(dest_path, "wb")
@@ -129,7 +154,9 @@ class DriveVideoDownloader:
                 self.service.files()
                 .list(
                     q=q,
-                    fields="nextPageToken, files(id,name,mimeType)",
+                    fields=(
+                        "nextPageToken, files(id,name,mimeType,owners(displayName),modifiedTime)"
+                    ),
                     pageSize=1000,
                     supportsAllDrives=True,
                     includeItemsFromAllDrives=True,
@@ -140,10 +167,14 @@ class DriveVideoDownloader:
             )
             for f in resp.get("files", []):
                 if self.is_video_mime(f.get("mimeType", "")):
+                    owners = f.get("owners") or []
+                    owner = owners[0].get("displayName") if owners else ""
                     items.append({
                         "id": f.get("id", ""),
                         "name": f.get("name", ""),
                         "mimeType": f.get("mimeType", ""),
+                        "ownerDisplayName": owner,
+                        "modifiedTime": f.get("modifiedTime", ""),
                     })
             page_token = resp.get("nextPageToken")
             if not page_token:

@@ -1,5 +1,5 @@
 import os
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 from src.transcription import WhisperTranscriber
 
@@ -13,6 +13,7 @@ def transcribe_media_outputs(
     language: Optional[str] = None,
     transcript_path: Optional[str] = None,
     srt_path: Optional[str] = None,
+    srt_header_comments: Optional[List[str]] = None,
     transcriber: Optional[WhisperTranscriber] = None,
     display_name: Optional[str] = None,
 ) -> Dict[str, Optional[str]]:
@@ -46,11 +47,10 @@ def transcribe_media_outputs(
     if write_srt:
         segments = (result or {}).get("segments", []) or []
         if segments:
-            WhisperTranscriber.save_srt(segments, srt_path)
+            WhisperTranscriber.save_srt(segments, srt_path, header_comments=srt_header_comments)
             print(f"SRT saved to {srt_path}")
         else:
             raise RuntimeError("No segments found to write SRT.")
 
     return {"transcript_path": transcript_path if write_txt else None,
             "srt_path": srt_path if write_srt else None}
-
