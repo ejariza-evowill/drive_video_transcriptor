@@ -40,6 +40,15 @@
   - In folder mode, transcripts save next to each video (one .txt per file).
  - In folder mode, use `--output-dir` to pick the download directory (default: current working directory).
 
+SRT subtitles
+- Write SRT along with transcripts:
+  - Single file: `python download_drive_video.py --url "..." --srt`
+  - With explicit path: `python download_drive_video.py --url "..." --srt --srt-output subtitle.srt`
+  - Folder mode: `python download_drive_video.py --folder-url "..." --output-dir ./downloads --srt`
+- Behavior:
+  - Uses Whisper result segments to create proper SRT with timestamps.
+  - In folder mode, `.srt` files save next to each video (one per file). `--srt-output` is ignored in folder mode.
+
 On first run it opens a browser window for you to log in and grant read access to Drive. The token is saved to `token.json` for reuse. To store files elsewhere, configure:
 - `GOOGLE_OAUTH_CLIENT_SECRETS` to point to your client secrets JSON
 - `GOOGLE_OAUTH_TOKEN` to set the token file path

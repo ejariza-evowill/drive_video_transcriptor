@@ -50,6 +50,8 @@ def main(argv=None):
     p.add_argument("--whisper-model", default="small", help="Whisper model name (tiny/base/small/medium/large)")
     p.add_argument("--transcript-output", help="Path to write transcript .txt (defaults to video basename + .txt)")
     p.add_argument("--language", help="Language code for Whisper (optional)")
+    p.add_argument("--srt", action="store_true", help="Also write an .srt subtitle file using Whisper segments")
+    p.add_argument("--srt-output", help="Path to write .srt for single-file mode (defaults to video basename + .srt)")
     args = p.parse_args(argv)
 
     if not os.path.exists(args.client_secrets):
@@ -79,7 +81,7 @@ def main(argv=None):
             print("Note: --transcript-output is ignored in folder mode; saving next to each video.")
 
         transcriber = None
-        if args.transcribe:
+        if args.transcribe or args.srt:
             transcriber = WhisperTranscriber(model=args.whisper_model)
 
         failures = 0
@@ -103,18 +105,27 @@ def main(argv=None):
                 failures += 1
                 continue
 
-            if args.transcribe and transcriber is not None:
+            if (args.transcribe or args.srt) and transcriber is not None:
                 base, _ = os.path.splitext(out_path)
                 transcript_path = f"{base}.txt"
+                srt_path = f"{base}.srt"
                 print(f"Transcribing '{name}' with Whisper model '{args.whisper_model}'...")
                 try:
                     result = transcriber.transcribe(out_path, language=args.language)
-                    text = (result or {}).get("text", "").strip()
-                    with open(transcript_path, "w", encoding="utf-8") as ftxt:
-                        ftxt.write(text + "\n")
-                    print(f"Transcript saved to {transcript_path}")
+                    if args.transcribe:
+                        text = (result or {}).get("text", "").strip()
+                        with open(transcript_path, "w", encoding="utf-8") as ftxt:
+                            ftxt.write(text + "\n")
+                        print(f"Transcript saved to {transcript_path}")
+                    if args.srt:
+                        segments = (result or {}).get("segments", []) or []
+                        if segments:
+                            WhisperTranscriber.save_srt(segments, srt_path)
+                            print(f"SRT saved to {srt_path}")
+                        else:
+                            print("No segments found to write SRT.", file=sys.stderr)
                 except Exception as e:
-                    print(f"Transcription failed for {name}: {e}", file=sys.stderr)
+                    print(f"Transcription/SRT failed for {name}: {e}", file=sys.stderr)
                     failures += 1
 
         return 1 if failures else 0
@@ -133,19 +144,28 @@ def main(argv=None):
         print(str(e), file=sys.stderr)
         return 2
 
-    if args.transcribe:
+    if args.transcribe or args.srt:
         base, _ = os.path.splitext(out_path)
         transcript_path = args.transcript_output or f"{base}.txt"
+        srt_path = args.srt_output or f"{base}.srt"
         print(f"Transcribing with Whisper model '{args.whisper_model}'...")
         try:
             transcriber = WhisperTranscriber(model=args.whisper_model)
             result = transcriber.transcribe(out_path, language=args.language)
-            text = (result or {}).get("text", "").strip()
-            with open(transcript_path, "w", encoding="utf-8") as f:
-                f.write(text + "\n")
-            print(f"Transcript saved to {transcript_path}")
+            if args.transcribe:
+                text = (result or {}).get("text", "").strip()
+                with open(transcript_path, "w", encoding="utf-8") as f:
+                    f.write(text + "\n")
+                print(f"Transcript saved to {transcript_path}")
+            if args.srt:
+                segments = (result or {}).get("segments", []) or []
+                if segments:
+                    WhisperTranscriber.save_srt(segments, srt_path)
+                    print(f"SRT saved to {srt_path}")
+                else:
+                    print("No segments found to write SRT.", file=sys.stderr)
         except Exception as e:
-            print(f"Transcription failed: {e}", file=sys.stderr)
+            print(f"Transcription/SRT failed: {e}", file=sys.stderr)
             return 2
     return 0
 

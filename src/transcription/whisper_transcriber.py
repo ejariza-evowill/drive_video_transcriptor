@@ -1,6 +1,6 @@
 import os
 import shutil
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 
 class WhisperTranscriber:
@@ -49,3 +49,44 @@ class WhisperTranscriber:
         result = model.transcribe(media_path, language=language, task=task, verbose=verbose)
         return result
 
+    # --- SRT helpers -------------------------------------------------------------
+    @staticmethod
+    def _format_timestamp(seconds: float) -> str:
+        if seconds < 0:
+            seconds = 0
+        hrs = int(seconds // 3600)
+        mins = int((seconds % 3600) // 60)
+        secs = int(seconds % 60)
+        millis = int(round((seconds - int(seconds)) * 1000))
+        # handle 60th-second rounding overflow
+        if millis == 1000:
+            millis = 0
+            secs += 1
+            if secs == 60:
+                secs = 0
+                mins += 1
+                if mins == 60:
+                    mins = 0
+                    hrs += 1
+        return f"{hrs:02d}:{mins:02d}:{secs:02d},{millis:03d}"
+
+    @classmethod
+    def segments_to_srt(cls, segments: List[Dict[str, Any]]) -> str:
+        """Convert Whisper segments to SRT string."""
+        lines: List[str] = []
+        for i, seg in enumerate(segments, start=1):
+            start = cls._format_timestamp(float(seg.get("start", 0.0)))
+            end = cls._format_timestamp(float(seg.get("end", 0.0)))
+            text = (seg.get("text") or "").strip()
+            lines.append(str(i))
+            lines.append(f"{start} --> {end}")
+            lines.append(text)
+            lines.append("")
+        return "\n".join(lines).rstrip() + "\n"
+
+    @classmethod
+    def save_srt(cls, segments: List[Dict[str, Any]], out_path: str) -> None:
+        """Write segments to an .srt file at `out_path`."""
+        srt = cls.segments_to_srt(segments)
+        with open(out_path, "w", encoding="utf-8") as f:
+            f.write(srt)
