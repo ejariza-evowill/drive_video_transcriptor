@@ -10,6 +10,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from src.video_downloader import DriveVideoDownloader
 from src.transcription import WhisperTranscriber
+from src.cli import transcribe_media_outputs
 
 
 SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
@@ -106,24 +107,16 @@ def main(argv=None):
                 continue
 
             if (args.transcribe or args.srt) and transcriber is not None:
-                base, _ = os.path.splitext(out_path)
-                transcript_path = f"{base}.txt"
-                srt_path = f"{base}.srt"
-                print(f"Transcribing '{name}' with Whisper model '{args.whisper_model}'...")
                 try:
-                    result = transcriber.transcribe(out_path, language=args.language)
-                    if args.transcribe:
-                        text = (result or {}).get("text", "").strip()
-                        with open(transcript_path, "w", encoding="utf-8") as ftxt:
-                            ftxt.write(text + "\n")
-                        print(f"Transcript saved to {transcript_path}")
-                    if args.srt:
-                        segments = (result or {}).get("segments", []) or []
-                        if segments:
-                            WhisperTranscriber.save_srt(segments, srt_path)
-                            print(f"SRT saved to {srt_path}")
-                        else:
-                            print("No segments found to write SRT.", file=sys.stderr)
+                    transcribe_media_outputs(
+                        out_path,
+                        write_txt=args.transcribe,
+                        write_srt=args.srt,
+                        model=args.whisper_model,
+                        language=args.language,
+                        transcriber=transcriber,
+                        display_name=name,
+                    )
                 except Exception as e:
                     print(f"Transcription/SRT failed for {name}: {e}", file=sys.stderr)
                     failures += 1
@@ -148,22 +141,16 @@ def main(argv=None):
         base, _ = os.path.splitext(out_path)
         transcript_path = args.transcript_output or f"{base}.txt"
         srt_path = args.srt_output or f"{base}.srt"
-        print(f"Transcribing with Whisper model '{args.whisper_model}'...")
         try:
-            transcriber = WhisperTranscriber(model=args.whisper_model)
-            result = transcriber.transcribe(out_path, language=args.language)
-            if args.transcribe:
-                text = (result or {}).get("text", "").strip()
-                with open(transcript_path, "w", encoding="utf-8") as f:
-                    f.write(text + "\n")
-                print(f"Transcript saved to {transcript_path}")
-            if args.srt:
-                segments = (result or {}).get("segments", []) or []
-                if segments:
-                    WhisperTranscriber.save_srt(segments, srt_path)
-                    print(f"SRT saved to {srt_path}")
-                else:
-                    print("No segments found to write SRT.", file=sys.stderr)
+            transcribe_media_outputs(
+                out_path,
+                write_txt=args.transcribe,
+                write_srt=args.srt,
+                model=args.whisper_model,
+                language=args.language,
+                transcript_path=transcript_path,
+                srt_path=srt_path,
+            )
         except Exception as e:
             print(f"Transcription/SRT failed: {e}", file=sys.stderr)
             return 2
