@@ -26,14 +26,19 @@
   - `python download_drive_video.py --url "https://drive.google.com/file/d/FILE_ID/view"`
 - Download by ID:
   - `python download_drive_video.py --file-id FILE_ID`
+- Download all videos from a Drive folder:
+  - `python download_drive_video.py --folder-url "https://drive.google.com/drive/folders/FOLDER_ID" --output-dir /path/to/save`
+  - or by ID: `python download_drive_video.py --folder-id FOLDER_ID --output-dir /path/to/save`
 - Choose output path:
   - `python download_drive_video.py --url "..." --output /path/to/video.mp4`
 - Overwrite existing file:
-  - `python download_drive_video.py --url "..." --output video.mp4 --force`
- - Transcribe after download (saves .txt next to video):
-   - `python download_drive_video.py --url "..." --transcribe`
- - Choose Whisper model and transcript path:
-   - `python download_drive_video.py --url "..." --transcribe --whisper-model small --transcript-output out.txt`
+- `python download_drive_video.py --url "..." --output video.mp4 --force`
+- Transcribe after download (saves .txt next to video):
+  - `python download_drive_video.py --url "..." --transcribe`
+- Choose Whisper model and transcript path:
+  - `python download_drive_video.py --url "..." --transcribe --whisper-model small --transcript-output out.txt`
+  - In folder mode, transcripts save next to each video (one .txt per file).
+ - In folder mode, use `--output-dir` to pick the download directory (default: current working directory).
 
 On first run it opens a browser window for you to log in and grant read access to Drive. The token is saved to `token.json` for reuse. To store files elsewhere, configure:
 - `GOOGLE_OAUTH_CLIENT_SECRETS` to point to your client secrets JSON

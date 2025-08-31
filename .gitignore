@@ -2,6 +2,9 @@
 credentials.json
 token.json
 
+# default output directory
+out/
+
 # Python
 __pycache__/
 *.pyc

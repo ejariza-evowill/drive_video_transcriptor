@@ -36,24 +36,21 @@ def main(argv=None):
     src = p.add_mutually_exclusive_group(required=True)
     src.add_argument("--file-id", help="Drive file ID of the video")
     src.add_argument("--url", help="Full Google Drive URL of the video")
-    p.add_argument("-o", "--output", help="Output file path. Defaults to the Drive file name in CWD")
+    src.add_argument("--folder-id", help="Drive folder ID to process all video files inside")
+    src.add_argument("--folder-url", help="Full Google Drive folder URL to process all video files inside")
+    p.add_argument("-o", "--output", help="Output file path. Defaults to the Drive file name in CWD. In folder mode, ignored.")
     p.add_argument("--client-secrets", default=os.environ.get("GOOGLE_OAUTH_CLIENT_SECRETS", "credentials.json"),
                    help="Path to OAuth Client secrets JSON (default: credentials.json or $GOOGLE_OAUTH_CLIENT_SECRETS)")
     p.add_argument("--token", default=os.environ.get("GOOGLE_OAUTH_TOKEN", "token.json"),
                    help="Path to store OAuth token (default: token.json or $GOOGLE_OAUTH_TOKEN)")
-    p.add_argument("--force", action="store_true", help="Overwrite output file if it exists")
+    p.add_argument("--force", action="store_true", help="Overwrite output file(s) if they exist")
+    p.add_argument("--output-dir", default=os.path.join(os.getcwd(), "out"), help="Folder mode: directory to save all downloads (default: 'downloads' inside the current working directory)")
     # Transcription options
     p.add_argument("--transcribe", action="store_true", help="Transcribe the downloaded media with Whisper")
     p.add_argument("--whisper-model", default="small", help="Whisper model name (tiny/base/small/medium/large)")
     p.add_argument("--transcript-output", help="Path to write transcript .txt (defaults to video basename + .txt)")
     p.add_argument("--language", help="Language code for Whisper (optional)")
     args = p.parse_args(argv)
-
-    file_id_input = args.file_id or args.url
-    file_id = DriveVideoDownloader.parse_drive_file_id(file_id_input)
-    if not file_id:
-        print("Could not parse a valid Drive file ID from input.", file=sys.stderr)
-        return 2
 
     if not os.path.exists(args.client_secrets):
         print(f"Client secrets not found: {args.client_secrets}. See README for setup.", file=sys.stderr)
@@ -62,6 +59,72 @@ def main(argv=None):
     creds = get_credentials(args.client_secrets, token_path=args.token)
     # Recreate service with valid creds (handles refresh or first auth)
     downloader = DriveVideoDownloader(build("drive", "v3", credentials=creds))
+
+    # Folder mode
+    if args.folder_id or args.folder_url:
+        folder_input = args.folder_id or args.folder_url
+        try:
+            videos = downloader.list_folder_videos(folder_input)
+        except Exception as e:
+            print(f"Failed to list folder contents: {e}", file=sys.stderr)
+            return 2
+
+        if not videos:
+            print("No video files found in the specified folder.")
+            return 0
+
+        out_dir = args.output_dir or os.getcwd()
+        os.makedirs(out_dir, exist_ok=True)
+        if args.transcript_output:
+            print("Note: --transcript-output is ignored in folder mode; saving next to each video.")
+
+        transcriber = None
+        if args.transcribe:
+            transcriber = WhisperTranscriber(model=args.whisper_model)
+
+        failures = 0
+        for f in videos:
+            vid = f.get("id")
+            name = f.get("name") or f"{vid}.mp4"
+            dest_path = os.path.join(out_dir, name)
+            try:
+                out_path = downloader.download(vid, output=dest_path, force=args.force)
+                print(f"Downloaded to: {out_path}")
+            except FileExistsError as e:
+                print(str(e), file=sys.stderr)
+                # Skip if not forcing
+                if not args.force:
+                    continue
+                else:
+                    failures += 1
+                    continue
+            except Exception as e:
+                print(f"Download failed for {name}: {e}", file=sys.stderr)
+                failures += 1
+                continue
+
+            if args.transcribe and transcriber is not None:
+                base, _ = os.path.splitext(out_path)
+                transcript_path = f"{base}.txt"
+                print(f"Transcribing '{name}' with Whisper model '{args.whisper_model}'...")
+                try:
+                    result = transcriber.transcribe(out_path, language=args.language)
+                    text = (result or {}).get("text", "").strip()
+                    with open(transcript_path, "w", encoding="utf-8") as ftxt:
+                        ftxt.write(text + "\n")
+                    print(f"Transcript saved to {transcript_path}")
+                except Exception as e:
+                    print(f"Transcription failed for {name}: {e}", file=sys.stderr)
+                    failures += 1
+
+        return 1 if failures else 0
+
+    # Single-file mode
+    file_id_input = args.file_id or args.url
+    file_id = DriveVideoDownloader.parse_drive_file_id(file_id_input)
+    if not file_id:
+        print("Could not parse a valid Drive file ID from input.", file=sys.stderr)
+        return 2
 
     try:
         out_path = downloader.download(file_id, output=args.output, force=args.force)

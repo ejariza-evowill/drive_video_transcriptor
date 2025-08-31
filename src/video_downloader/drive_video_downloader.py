@@ -1,7 +1,7 @@
 import io
 import os
 import re
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List, Dict
 
 from googleapiclient.http import MediaIoBaseDownload
 
@@ -29,6 +29,24 @@ class DriveVideoDownloader:
             r"[?&]id=([A-Za-z0-9_-]{10,})",   # https://drive.google.com/open?id=<id>
             r"/uc\?id=([A-Za-z0-9_-]{10,})", # https://drive.google.com/uc?id=<id>&export=download
             r"/drive/folders/([A-Za-z0-9_-]{10,})",  # folder link
+        ]
+        for pat in patterns:
+            m = re.search(pat, s)
+            if m:
+                return m.group(1)
+        return None
+
+    @staticmethod
+    def parse_drive_folder_id(s: str) -> Optional[str]:
+        """Extract a Drive folder ID from a raw ID or common Drive folder URLs."""
+        # Raw-looking ID
+        if re.fullmatch(r"[A-Za-z0-9_-]{10,}", s) and "/" not in s:
+            return s
+        # Common folder URL formats
+        patterns = [
+            r"/drive/folders/([A-Za-z0-9_-]{10,})",  # https://drive.google.com/drive/folders/<id>
+            r"/folders/([A-Za-z0-9_-]{10,})",        # other variants
+            r"[?&]id=([A-Za-z0-9_-]{10,})",
         ]
         for pat in patterns:
             m = re.search(pat, s)
@@ -92,3 +110,42 @@ class DriveVideoDownloader:
         self.download_file(file_id, out_path)
         return out_path
 
+    # --- Folder operations --------------------------------------------------------
+    def list_folder_videos(self, folder_id_or_url: str) -> List[Dict[str, str]]:
+        """Return a list of video files within a Drive folder.
+
+        Each item is a dict with keys: id, name, mimeType.
+        """
+        folder_id = self.parse_drive_folder_id(folder_id_or_url)
+        if not folder_id:
+            raise ValueError("Could not parse a valid Drive folder ID from input.")
+
+        # Include shared drives for broader compatibility
+        q = f"'{folder_id}' in parents and trashed = false"
+        items: List[Dict[str, str]] = []
+        page_token = None
+        while True:
+            resp = (
+                self.service.files()
+                .list(
+                    q=q,
+                    fields="nextPageToken, files(id,name,mimeType)",
+                    pageSize=1000,
+                    supportsAllDrives=True,
+                    includeItemsFromAllDrives=True,
+                    corpora="allDrives",
+                    pageToken=page_token,
+                )
+                .execute()
+            )
+            for f in resp.get("files", []):
+                if self.is_video_mime(f.get("mimeType", "")):
+                    items.append({
+                        "id": f.get("id", ""),
+                        "name": f.get("name", ""),
+                        "mimeType": f.get("mimeType", ""),
+                    })
+            page_token = resp.get("nextPageToken")
+            if not page_token:
+                break
+        return items
