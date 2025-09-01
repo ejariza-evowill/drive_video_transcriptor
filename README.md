@@ -66,7 +66,13 @@ On first run it opens a browser window for you to log in and grant read access t
 - Permission denied: Ensure your Google account can access the file and the owner hasn’t restricted downloads.
 - App not verified: In development, you may see an "unverified app" screen unless you publish/verify the OAuth consent.
  - Transcription fails with ffmpeg not found: Install ffmpeg (e.g., macOS: `brew install ffmpeg`, Ubuntu: `sudo apt-get install ffmpeg`).
- - Transcription fails due to Torch/whisper: Ensure a compatible PyTorch is installed for your Python and hardware.
+- Transcription fails due to Torch/whisper: Ensure a compatible PyTorch is installed for your Python and hardware.
 
 **Security**
 - Do not commit `credentials.json` or `token.json` to source control.
+
+**Development: Linting & Formatting**
+- Install dev tools: `pip install -r dev-requirements.txt`
+- Lint with Flake8: `make lint` (or `flake8 src download_drive_video.py`)
+- Auto-format with autopep8 in-place: `make format`
+- Preview formatting changes (diff only): `make format-check`

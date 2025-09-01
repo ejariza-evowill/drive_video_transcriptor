@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 import os
 import sys
-from typing import Optional
 
 from googleapiclient.discovery import build
 from src.auth import get_credentials, DEFAULT_SCOPES
 from src.video_downloader import DriveVideoDownloader
 from src.transcription import WhisperTranscriber
 from src.cli import transcribe_media_outputs, build_arg_parser
+
 
 def main(argv=None):
     p = build_arg_parser()

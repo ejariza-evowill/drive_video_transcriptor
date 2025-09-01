@@ -27,7 +27,7 @@ class DriveVideoDownloader:
         patterns = [
             r"/file/d/([A-Za-z0-9_-]{10,})",  # https://drive.google.com/file/d/<id>/view
             r"[?&]id=([A-Za-z0-9_-]{10,})",   # https://drive.google.com/open?id=<id>
-            r"/uc\?id=([A-Za-z0-9_-]{10,})", # https://drive.google.com/uc?id=<id>&export=download
+            r"/uc\?id=([A-Za-z0-9_-]{10,})",  # https://drive.google.com/uc?id=<id>&export=download
             r"/drive/folders/([A-Za-z0-9_-]{10,})",  # folder link
         ]
         for pat in patterns:

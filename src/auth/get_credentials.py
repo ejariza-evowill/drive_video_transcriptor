@@ -9,6 +9,7 @@ from typing import Optional
 
 DEFAULT_SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
 
+
 def get_credentials(
     client_secrets_path: str,
     token_path: str = "token.json",

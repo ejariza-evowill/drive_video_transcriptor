@@ -49,4 +49,3 @@ def build_arg_parser() -> argparse.ArgumentParser:
     p.add_argument("--srt", action="store_true", help="Also write an .srt subtitle file using Whisper segments")
     p.add_argument("--srt-output", help="Path to write .srt for single-file mode (defaults to video basename + .srt)")
     return p
-
