@@ -7,7 +7,6 @@ import os
 logger = logging.getLogger(__name__)
 
 
-
 def download_and_transcribe(args, file_id, target_path, downloader, transcriber=None):
     """Download a single file by ID and optionally transcribe it.
     Returns (out_path, transcript_path, srt_path) or None on failure.
@@ -38,6 +37,7 @@ def download_and_transcribe(args, file_id, target_path, downloader, transcriber=
             transcript_path=transcript_path,
             srt_path=srt_path,
             args=args,
+            write_txt=False,
         )
         if isinstance(outcome, dict) and outcome.get("error"):
             logger.error("Transcription/SRT failed: %s", outcome["error"])

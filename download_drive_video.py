@@ -11,6 +11,7 @@ from src.cli import build_arg_parser, download_and_transcribe
 
 logger = logging.getLogger(__name__)
 
+
 def main(argv=None):
     # Configure basic logging; adjust level via LOG_LEVEL env if desired
     logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"))
@@ -59,7 +60,7 @@ def main(argv=None):
 
             response = download_and_transcribe(
                 args, file_id, target_path, downloader, transcriber)
-            
+
             if response is None:
                 failures += 1
                 continue
@@ -92,7 +93,7 @@ def main(argv=None):
 
     response = download_and_transcribe(args, file_id, target_path, downloader, transcriber)
     if response is None:
-        return 2    
+        return 2
     out_path, transcript_path, srt_path = response
 
     return 0
