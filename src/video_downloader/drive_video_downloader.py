@@ -176,6 +176,10 @@ class DriveVideoDownloader:
                         "ownerDisplayName": owner,
                         "modifiedTime": f.get("modifiedTime", ""),
                     })
+                elif f.get("mimeType", "") == "application/vnd.google-apps.folder":
+                    subfolder_id = f.get("id", "")
+                    subfolder_videos = self.list_folder_videos(subfolder_id)
+                    items.extend(subfolder_videos)
             page_token = resp.get("nextPageToken")
             if not page_token:
                 break

@@ -114,6 +114,39 @@ def build_srt_header_comments_from_file_id(source: str, *, downloader: Any) -> l
     return build_srt_header_comments_from_dict(meta)
 
 
+def read_srt_header_info(srt_path: str) -> Dict[str, str]:
+    """Read the leading SRT header comments and extract key/value info.
+
+    Header lines are expected to be comment lines starting with "# ", like:
+      # Owner: Jane Doe
+      # Modified: 2025-01-16T08:06:53.000Z
+
+    Parsing stops at the first blank line or first non-comment line.
+    Returns a dict with keys like "Owner" and "Modified" when present.
+    Missing or malformed headers result in an empty dict.
+    """
+    info: Dict[str, str] = {}
+    try:
+        with open(srt_path, "r", encoding="utf-8") as f:
+            for line in f:
+                s = line.rstrip("\n")
+                if not s:
+                    # blank line ends header block (if any)
+                    break
+                if not s.startswith("# "):
+                    # first non-comment means no more header
+                    break
+                # Strip leading '# ' and split key/value on first ':'
+                payload = s[2:].strip()
+                if ":" in payload:
+                    key, val = payload.split(":", 1)
+                    info[key.strip()] = val.strip()
+                # else: ignore malformed comment
+    except Exception:
+        return {}
+    return info
+
+
 # Note: no generic wrapper; use the typed helpers above directly.
 
 @with_args_and_error_handling

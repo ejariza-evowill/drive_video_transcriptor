@@ -48,6 +48,9 @@ SRT subtitles
 - Behavior:
   - Uses Whisper result segments to create proper SRT with timestamps.
   - In folder mode, `.srt` files save next to each video (one per file). `--srt-output` is ignored in folder mode.
+  - Skip optimization: if an `.srt` already exists next to the target video name and its header comments match the Drive file metadata ("Owner" and "Modified"), the tool skips both download and transcription. Header format:
+    - `# Owner: <Drive owner displayName>`
+    - `# Modified: <Drive modifiedTime>`
 
 On first run it opens a browser window for you to log in and grant read access to Drive. The token is saved to `token.json` for reuse. To store files elsewhere, configure:
 - `GOOGLE_OAUTH_CLIENT_SECRETS` to point to your client secrets JSON

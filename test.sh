@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Clean out directory for fresh test
-rm -rf out/
+# rm -rf out/
 
 # Download all videos from a Google Drive folder and transcribe them with SRT output
 python download_drive_video.py --folder-url https://drive.google.com/drive/folders/1H0y9iAixlhVPPVCdhHzClJLpL2Y_ERyC --transcribe --srt
