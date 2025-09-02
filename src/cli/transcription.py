@@ -25,6 +25,7 @@ def with_args_and_error_handling(func):
         write_srt: Optional[bool] = None,
         model: Optional[str] = None,
         language: Optional[str] = None,
+        languages: Optional[List[str]] = None,
         transcript_path: Optional[str] = None,
         srt_path: Optional[str] = None,
         srt_header_comments: Optional[List[str]] = None,
@@ -48,6 +49,11 @@ def with_args_and_error_handling(func):
                 model = getattr(args, "whisper_model", None)
             if language is None:
                 language = getattr(args, "language", None)
+            if languages is None:
+                langs_arg = getattr(args, "languages", None)
+                if isinstance(langs_arg, str):
+                    parts = [p.strip().lower() for p in langs_arg.replace(",", " ").split()]
+                    languages = [p for p in parts if p]
             if transcript_path is None:
                 transcript_path = getattr(args, "transcript_output", None)
             if srt_path is None:
@@ -66,6 +72,7 @@ def with_args_and_error_handling(func):
             write_srt=write_srt,
             model=model or "small",
             language=language,
+            languages=languages,
             transcript_path=transcript_path,
             srt_path=srt_path,
             srt_header_comments=srt_header_comments,
@@ -157,6 +164,7 @@ def transcribe_media_outputs(
     write_srt: bool,
     model: str = "small",
     language: Optional[str] = None,
+    languages: Optional[List[str]] = None,
     transcript_path: Optional[str] = None,
     srt_path: Optional[str] = None,
     # Optionally supply SRT header data
@@ -186,7 +194,9 @@ def transcribe_media_outputs(
 
     label = f" '{display_name}'" if display_name else ""
     print(f"Transcribing{label} with Whisper model '{local_transcriber.model_name}'...")
-    result: Dict[str, Any] = local_transcriber.transcribe(media_path, language=language)
+    result: Dict[str, Any] = local_transcriber.transcribe(
+        media_path, language=language, allowed_languages=languages
+    )
 
     if write_txt:
         text = (result or {}).get("text", "").strip()

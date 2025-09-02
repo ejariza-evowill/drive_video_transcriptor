@@ -46,6 +46,13 @@ def build_arg_parser() -> argparse.ArgumentParser:
     p.add_argument("--whisper-model", default="small", help="Whisper model name (tiny/base/small/medium/large)")
     p.add_argument("--transcript-output", help="Path to write transcript .txt (defaults to video basename + .txt)")
     p.add_argument("--language", help="Language code for Whisper (optional)")
+    p.add_argument(
+        "--languages",
+        help=(
+            "Comma-separated list of allowed language codes; when provided and --language is not set, "
+            "the best match is chosen among this set (e.g., en,es,uk)."
+        ),
+    )
     p.add_argument("--srt", action="store_true", help="Also write an .srt subtitle file using Whisper segments")
     p.add_argument("--srt-output", help="Path to write .srt for single-file mode (defaults to video basename + .srt)")
     return p

@@ -39,6 +39,9 @@
   - `python download_drive_video.py --url "..." --transcribe --whisper-model small --transcript-output out.txt`
   - In folder mode, transcripts save next to each video (one .txt per file).
  - In folder mode, use `--output-dir` to pick the download directory (default: current working directory).
+ - Restrict language detection to a set:
+   - `python download_drive_video.py --url "..." --transcribe --languages en,es,uk`
+   - If `--language` is not set, the tool detects language and chooses the best match within the allowed set.
 
 SRT subtitles
 - Write SRT along with transcripts:

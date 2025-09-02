@@ -1,7 +1,9 @@
 import os
 import shutil
+import logging
 from typing import Optional, Dict, Any, List
 
+logger = logging.getLogger(__name__)
 
 class WhisperTranscriber:
     """Thin wrapper around OpenAI Whisper for local transcription.
@@ -35,6 +37,7 @@ class WhisperTranscriber:
         media_path: str,
         *,
         language: Optional[str] = None,
+        allowed_languages: Optional[List[str]] = None,
         task: str = "transcribe",
         verbose: bool = False,
     ) -> Dict[str, Any]:
@@ -46,7 +49,38 @@ class WhisperTranscriber:
             raise FileNotFoundError(media_path)
         self._ensure_deps()
         model = self._load_model()
-        result = model.transcribe(media_path, language=language, task=task, verbose=verbose)
+
+        chosen_lang = language
+        # If a set of allowed languages is provided and no explicit language was given,
+        # detect language and choose the best within the allowed set.
+        if chosen_lang is None and allowed_languages:
+            try:
+                import whisper
+                import torch
+                from whisper.audio import N_FRAMES, N_SAMPLES
+                # Normalize codes to lowercase
+                allowed = [str(x).lower() for x in allowed_languages if str(x).strip()]
+                if allowed:
+                    logger.info(
+                        "Detecting language, will restrict to allowed set: %s", ", ".join(allowed)
+                    )
+                    audio = whisper.load_audio(media_path)
+                    audio = whisper.pad_or_trim(audio, N_SAMPLES) # type: ignore
+                    dtype = torch.float16
+                    mel = whisper.log_mel_spectrogram(audio, model.dims.n_mels, padding=N_SAMPLES)
+                    mel_segment = whisper.pad_or_trim(mel, N_FRAMES).to(model.device).to(dtype)
+                    logger.info("Detecting language...")
+                    _, probs = model.detect_language(mel_segment)
+                    # Pick the highest probability among the allowed set
+                    chosen_lang = max(allowed, key=lambda l: float(probs.get(l, 0.0)))
+                    logger.info("Detected language: %s", chosen_lang)               
+            except Exception:
+                # Fall back to default detection if anything goes wrong
+                chosen_lang = None
+
+        result = model.transcribe(
+            media_path, language=chosen_lang, task=task, verbose=verbose
+        )
         return result
 
     # --- SRT helpers -------------------------------------------------------------
